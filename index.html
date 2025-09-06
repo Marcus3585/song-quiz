@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Airtable 範例：欄位表 + 讀取資料</title>
+  <style>
+    :root {
+      --bg: #0f172a; --card:#0b1220; --ink:#e5e7eb; --muted:#94a3b8; --line:#1f2937; --accent:#22d3ee; --ok:#22c55e; --err:#ef4444;
+    }
+    html, body { margin:0; background:var(--bg); color:var(--ink); font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", sans-serif; }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 20px; }
+    h1 { font-size: 1.35rem; margin: 0 0 14px; }
+    h2 { font-size: 1.1rem; margin: 18px 0 10px; color: var(--ink); }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid #233148; vertical-align: top; }
+    th { text-align: left; color: var(--muted); font-weight: 700; }
+    tr:last-child td { border-bottom: 0; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .btns { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0 0; }
+    button { background: var(--accent); color: #05222b; border: 0; padding: 10px 14px; border-radius: 10px; font-weight: 700; cursor: pointer; }
+    .secondary { background: #1f2937; color: var(--ink); border: 1px solid #2b3a55; }
+    input, select { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #2b3a55; background: #0e1627; color: var(--ink); }
+    .note { color: var(--muted); font-size: 0.95rem; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .status { margin-top: 8px; font-size: 0.95rem; }
+    .ok { color: var(--ok); }
+    .err { color: var(--err); }
+    .scroll { overflow: auto; }
+    @media (max-width: 720px) {
+      .row { grid-template-columns: 1fr; }
+      th, td { padding: 10px 8px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Airtable Index 範例（Base/表單欄位表 + API 讀取）</h1>
+
+    <div class="card">
+      <h2>你的 IDs</h2>
+      <div class="row">
+        <div>
+          <label class="note">Base ID</label>
+          <input id="baseId" class="mono" value="appqE0rzmU31PiLls" />
+        </div>
+        <div>
+          <label class="note">Table ID 或表名</label>
+          <input id="tableId" class="mono" value="tblmczoVSwI3p7CpD" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <div>
+          <label class="note">View ID（可選）</label>
+          <input id="viewId" class="mono" value="viwj88kpOYVeGzvMb" />
+        </div>
+        <div>
+          <label class="note">Personal Access Token（讀取資料用，可先留白）</label>
+          <input id="token" class="mono" placeholder="patXXXXXXXX..." />
+        </div>
+      </div>
+      <p class="note">提示：表名可直接輸入名稱（如 Result），但建議用 Table ID（tbl...）避免空白/大小寫問題。</p>
+    </div>
+
+    <div class="card">
+      <h2>欄位定義表（可拷貝/下載 CSV）</h2>
+      <div class="scroll">
+        <table aria-label="Airtable fields">
+          <thead>
+            <tr>
+              <th>Field Name</th>
+              <th>Type</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody id="fieldsBody">
+            <tr><td>className</td><td>Single line text</td><td></td></tr>
+            <tr><td>studentNo</td><td>Single line text</td><td></td></tr>
+            <tr><td>studentName</td><td>Single line text</td><td></td></tr>
+            <tr><td>score</td><td>Number</td><td></td></tr>
+            <tr><td>total</td><td>Number</td><td></td></tr>
+            <tr><td>percent</td><td>Number</td><td></td></tr>
+            <tr><td>submittedAt</td><td>Date (Include time)</td><td></td></tr>
+            <tr><td>rawHTML</td><td>Long text</td><td>Optional; skip if you don’t want to store the full HTML</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="btns">
+        <button id="copyCsvBtn">複製 CSV</button>
+        <button id="downloadCsvBtn" class="secondary">下載 CSV</button>
+      </div>
+      <p class="note">將 CSV 貼到 Excel/Google Sheets 即可。</p>
+    </div>
+
+    <div class="card">
+      <h2>從 Airtable 讀取資料（GET）</h2>
+      <div class="btns">
+        <button id="fetchBtn">讀取資料</button>
+        <button id="clearBtn" class="secondary">清空結果</button>
+      </div>
+      <div id="status" class="status note"></div>
+      <div id="result" class="scroll mono" style="margin-top:10px; max-height: 360px; border:1px solid #2b3a55; border-radius:10px; padding:10px; background:#0b1322;"></div>
+      <p class="note">注意：此為前端示範，Token 會暴露在瀏覽器。正式環境請改由後端呼叫 Airtable API。</p>
+    </div>
+
+    <div class="card">
+      <h2>cURL / Fetch 範例</h2>
+      <pre class="mono scroll" style="white-space: pre; overflow:auto; padding:10px; background:#0b1322; border-radius:10px; border:1px solid #2b3a55;">
+# cURL
+curl -sS \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  "https://api.airtable.com/v0/appqE0rzmU31PiLls/tblmczoVSwI3p7CpD?view=viwj88kpOYVeGzvMb"
+
+# JS fetch（Node/瀏覽器）
+const baseId = "appqE0rzmU31PiLls";
+const table = "tblmczoVSwI3p7CpD"; // 或表名 "Result"
+const view = "viwj88kpOYVeGzvMb";
+const token = process.env.AIRTABLE_TOKEN; // 在前端請勿硬編，改用後端代理
+
+const url = new URL(`https://api.airtable.com/v0/${baseId}/${table}`);
+if (view) url.searchParams.set('view', view);
+
+const res = await fetch(url, {
+  headers: { Authorization: `Bearer ${token}` }
+});
+const data = await res.json();
+console.log(data);
+      </pre>
+    </div>
+  </div>
+
+  <script>
+    const fields = [
+      ["Field Name","Type","Notes"],
+      ["className","Single line text",""],
+      ["studentNo","Single line text",""],
+      ["studentName","Single line text",""],
+      ["score","Number",""],
+      ["total","Number",""],
+      ["percent","Number",""],
+      ["submittedAt","Date (Include time)",""],
+      ["rawHTML","Long text","Optional; skip if you don’t want to store the full HTML"],
+    ];
+
+    function toCSV(data){
+      const esc = v => {
+        if (v == null) return "";
+        const s = String(v);
+        return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      return data.map(r => r.map(esc).join(",")).join("\n");
+    }
+
+    document.getElementById('copyCsvBtn').addEventListener('click', async () => {
+      const csv = toCSV(fields);
+      try {
+        await navigator.clipboard.writeText(csv);
+        alert('CSV 已複製到剪貼簿。');
+      } catch (e) {
+        alert('複製失敗，請手動選取表格內容複製。');
+      }
+    });
+
+    document.getElementById('downloadCsvBtn').addEventListener('click', () => {
+      const csv = toCSV(fields);
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'Airtable-Fields.csv';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    function ui(id){ return document.getElementById(id); }
+
+    ui('fetchBtn').addEventListener('click', async () => {
+      const baseId = ui('baseId').value.trim();
+      const table  = ui('tableId').value.trim();
+      const view   = ui('viewId').value.trim();
+      const token  = ui('token').value.trim();
+
+      ui('status').textContent = '';
+      ui('result').textContent = '';
+
+      if (!baseId || !table) {
+        ui('status').innerHTML = '<span class="err">請填 Base ID 與 Table ID/表名。</span>';
+        return;
+      }
+      if (!token) {
+        ui('status').innerHTML = '<span class="err">未填 Token：僅示範可用。要實際讀資料，請填入 Personal Access Token 並確保已授權此 Base。</span>';
+        return;
+      }
+
+      try {
+        const url = new URL(`https://api.airtable.com/v0/${baseId}/${encodeURIComponent(table)}`);
+        if (view) url.searchParams.set('view', view);
+
+        ui('status').textContent = '請求中...';
+        const res = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        const text = await res.text();
+        let json;
+        try {
+          json = JSON.parse(text);
+        } catch {
+          throw new Error('回應不是 JSON：' + text.slice(0, 200));
+        }
+
+        if (!res.ok) {
+          ui('status').innerHTML = '<span class="err">發生錯誤（' + res.status + '）：' + (json.error?.message || json.error || 'Unknown') + '</span>';
+        } else {
+          ui('status').innerHTML = '<span class="ok">成功！以下為回應資料。</span>';
+        }
+        ui('result').textContent = JSON.stringify(json, null, 2);
+      } catch (err) {
+        ui('status').innerHTML = '<span class="err">例外錯誤：' + (err.message || err) + '</span>';
+      }
+    });
+
+    ui('clearBtn').addEventListener('click', () => {
+      ui('status').textContent = '';
+      ui('result').textContent = '';
+    });
+  </script>
+</body>
+</html>
