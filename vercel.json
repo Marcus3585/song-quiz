@@ -1,17 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
-  "buildCommand": "",
-  "devCommand": "",
-  "framework": null,
   "functions": {
-    "api/**/*.js": {
-      "runtime": "nodejs20.x",
-      "memory": 128,
-      "maxDuration": 10
-    }
+    "api/**/*.js": { "runtime": "nodejs20.x", "memory": 128, "maxDuration": 10 }
   },
   "routes": [
-    { "src": "^/api/submit$", "dest": "/api/submit.js" }
+    { "src": "^/api/submit$", "dest": "/api/submit.js" },
+    { "src": "^/api/export$", "dest": "/api/export.js" }
   ]
 }
