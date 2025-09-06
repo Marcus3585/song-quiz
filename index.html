@@ -338,7 +338,9 @@
         setStatus('提交失敗：' + e.message, 'err');
       }
     });
-
+<div class="btns" style="margin-top:10px;">
+  <button id="downloadCsvBtn" class="secondary">下載全部成績 CSV</button>
+</div>
     document.getElementById('resetBtn').addEventListener('click', () => {
       document.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(i => i.checked = false);
       document.querySelectorAll('.explain').forEach(el => el.classList.add('hidden'));
