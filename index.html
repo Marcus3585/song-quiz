@@ -3,229 +3,347 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Airtable 範例：欄位表 + 讀取資料</title>
+  <title>宋朝選擇題測驗（安全提交到後端）</title>
   <style>
     :root {
-      --bg: #0f172a; --card:#0b1220; --ink:#e5e7eb; --muted:#94a3b8; --line:#1f2937; --accent:#22d3ee; --ok:#22c55e; --err:#ef4444;
+      --bg:#0f172a; --card:#0b1220; --ink:#e5e7eb; --muted:#94a3b8; --line:#1f2937;
+      --accent:#22d3ee; --ok:#22c55e; --warn:#f59e0b; --err:#ef4444;
     }
     html, body { margin:0; background:var(--bg); color:var(--ink); font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", sans-serif; }
-    .wrap { max-width: 960px; margin: 0 auto; padding: 20px; }
-    h1 { font-size: 1.35rem; margin: 0 0 14px; }
-    h2 { font-size: 1.1rem; margin: 18px 0 10px; color: var(--ink); }
-    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 10px 12px; border-bottom: 1px solid #233148; vertical-align: top; }
-    th { text-align: left; color: var(--muted); font-weight: 700; }
-    tr:last-child td { border-bottom: 0; }
+    .wrap { max-width: 900px; margin: 0 auto; padding: 20px; }
+    h1 { font-size: 1.35rem; margin: 0 0 12px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .btns { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0 0; }
+    label.small { color: var(--muted); font-size: 0.95rem; display:block; margin-bottom: 6px; }
+    input { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #2b3a55; background: #0e1627; color: var(--ink); }
+    .btns { display: flex; gap: 10px; flex-wrap: wrap; }
     button { background: var(--accent); color: #05222b; border: 0; padding: 10px 14px; border-radius: 10px; font-weight: 700; cursor: pointer; }
     .secondary { background: #1f2937; color: var(--ink); border: 1px solid #2b3a55; }
-    input, select { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #2b3a55; background: #0e1627; color: var(--ink); }
+    .question { border: 1px solid #22314b; border-radius: 10px; padding: 12px; margin: 10px 0; }
+    .q-title { font-weight: 700; margin-bottom: 8px; }
+    .choice { display:flex; gap:10px; align-items:flex-start; margin:6px 0; }
+    .choice input { margin-top: 2px; }
     .note { color: var(--muted); font-size: 0.95rem; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-    .status { margin-top: 8px; font-size: 0.95rem; }
+    .score { font-size: 1.1rem; margin-top: 6px; }
     .ok { color: var(--ok); }
+    .warn { color: var(--warn); }
     .err { color: var(--err); }
-    .scroll { overflow: auto; }
-    @media (max-width: 720px) {
-      .row { grid-template-columns: 1fr; }
-      th, td { padding: 10px 8px; }
-    }
+    .explain { margin-top:6px; color:#cbd5e1; }
+    .hidden { display:none; }
+    @media (max-width: 720px) { .row { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>Airtable Index 範例（Base/表單欄位表 + API 讀取）</h1>
+    <h1>宋朝選擇題測驗</h1>
 
     <div class="card">
-      <h2>你的 IDs</h2>
       <div class="row">
         <div>
-          <label class="note">Base ID</label>
-          <input id="baseId" class="mono" value="appqE0rzmU31PiLls" />
+          <label class="small">考生姓名</label>
+          <input id="studentName" placeholder="請輸入姓名" />
         </div>
         <div>
-          <label class="note">Table ID 或表名</label>
-          <input id="tableId" class="mono" value="tblmczoVSwI3p7CpD" />
+          <label class="small">學號／座號</label>
+          <input id="studentNo" placeholder="例如 S12345 或 07" />
         </div>
       </div>
       <div class="row" style="margin-top:10px;">
         <div>
-          <label class="note">View ID（可選）</label>
-          <input id="viewId" class="mono" value="viwj88kpOYVeGzvMb" />
+          <label class="small">班級名稱</label>
+          <input id="className" placeholder="例如 八年乙班、302 班" />
         </div>
         <div>
-          <label class="note">Personal Access Token（讀取資料用，可先留白）</label>
-          <input id="token" class="mono" placeholder="patXXXXXXXX..." />
+          <label class="small">後端提交 URL</label>
+          <input id="submitUrl" class="mono" value="/api/submit" />
         </div>
       </div>
-      <p class="note">提示：表名可直接輸入名稱（如 Result），但建議用 Table ID（tbl...）避免空白/大小寫問題。</p>
+      <details style="margin-top:10px;">
+        <summary class="small">伺服器端 Airtable 設定（說明）</summary>
+        <ul class="note">
+          <li>請在你的後端環境變數設定 AIRTABLE_TOKEN、AIRTABLE_BASE_ID=appqE0rzmU31PiLls、AIRTABLE_TABLE=tblmczoVSwI3p7CpD（或表名）。</li>
+          <li>可選：設定 FORM_SECRET，並要求前端在請求頭帶 x-form-secret。</li>
+          <li>前端不會持有任何 Token，安全由你的後端負責。</li>
+        </ul>
+      </details>
+    </div>
+
+    <div class="card" id="quizCard">
+      <div id="quiz"></div>
+      <div class="btns" style="margin-top:10px;">
+        <button id="submitBtn">Submit 交卷並上傳</button>
+        <button id="resetBtn" class="secondary">清空作答</button>
+      </div>
+      <div id="status" class="note" style="margin-top:6px;"></div>
+      <div id="result" class="score"></div>
     </div>
 
     <div class="card">
-      <h2>欄位定義表（可拷貝/下載 CSV）</h2>
-      <div class="scroll">
-        <table aria-label="Airtable fields">
-          <thead>
-            <tr>
-              <th>Field Name</th>
-              <th>Type</th>
-              <th>Notes</th>
-            </tr>
-          </thead>
-          <tbody id="fieldsBody">
-            <tr><td>className</td><td>Single line text</td><td></td></tr>
-            <tr><td>studentNo</td><td>Single line text</td><td></td></tr>
-            <tr><td>studentName</td><td>Single line text</td><td></td></tr>
-            <tr><td>score</td><td>Number</td><td></td></tr>
-            <tr><td>total</td><td>Number</td><td></td></tr>
-            <tr><td>percent</td><td>Number</td><td></td></tr>
-            <tr><td>submittedAt</td><td>Date (Include time)</td><td></td></tr>
-            <tr><td>rawHTML</td><td>Long text</td><td>Optional; skip if you don’t want to store the full HTML</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="btns">
-        <button id="copyCsvBtn">複製 CSV</button>
-        <button id="downloadCsvBtn" class="secondary">下載 CSV</button>
-      </div>
-      <p class="note">將 CSV 貼到 Excel/Google Sheets 即可。</p>
-    </div>
-
-    <div class="card">
-      <h2>從 Airtable 讀取資料（GET）</h2>
-      <div class="btns">
-        <button id="fetchBtn">讀取資料</button>
-        <button id="clearBtn" class="secondary">清空結果</button>
-      </div>
-      <div id="status" class="status note"></div>
-      <div id="result" class="scroll mono" style="margin-top:10px; max-height: 360px; border:1px solid #2b3a55; border-radius:10px; padding:10px; background:#0b1322;"></div>
-      <p class="note">注意：此為前端示範，Token 會暴露在瀏覽器。正式環境請改由後端呼叫 Airtable API。</p>
-    </div>
-
-    <div class="card">
-      <h2>cURL / Fetch 範例</h2>
-      <pre class="mono scroll" style="white-space: pre; overflow:auto; padding:10px; background:#0b1322; border-radius:10px; border:1px solid #2b3a55;">
-# cURL
-curl -sS \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  "https://api.airtable.com/v0/appqE0rzmU31PiLls/tblmczoVSwI3p7CpD?view=viwj88kpOYVeGzvMb"
-
-# JS fetch（Node/瀏覽器）
-const baseId = "appqE0rzmU31PiLls";
-const table = "tblmczoVSwI3p7CpD"; // 或表名 "Result"
-const view = "viwj88kpOYVeGzvMb";
-const token = process.env.AIRTABLE_TOKEN; // 在前端請勿硬編，改用後端代理
-
-const url = new URL(`https://api.airtable.com/v0/${baseId}/${table}`);
-if (view) url.searchParams.set('view', view);
-
-const res = await fetch(url, {
-  headers: { Authorization: `Bearer ${token}` }
-});
-const data = await res.json();
-console.log(data);
-      </pre>
+      <details>
+        <summary>在 Airtable 匯出 CSV</summary>
+        <ol class="note">
+          <li>打開 Airtable 該表（Base: appqE0rzmU31PiLls，Table: tblmczoVSwI3p7CpD 或你的表名）。</li>
+          <li>在視圖右上角「⋯」選單 > Download CSV。</li>
+          <li>會下載該視圖下的所有資料為 CSV；如需全部欄位，切換到包含全部欄位的 Grid 視圖再下載。</li>
+        </ol>
+      </details>
     </div>
   </div>
 
   <script>
-    const fields = [
-      ["Field Name","Type","Notes"],
-      ["className","Single line text",""],
-      ["studentNo","Single line text",""],
-      ["studentName","Single line text",""],
-      ["score","Number",""],
-      ["total","Number",""],
-      ["percent","Number",""],
-      ["submittedAt","Date (Include time)",""],
-      ["rawHTML","Long text","Optional; skip if you don’t want to store the full HTML"],
+    // 宋朝題庫（可自行擴充）
+    const QUESTIONS = [
+      {
+        id: "Q1",
+        type: "single",
+        text: "宋朝的建立者是誰？",
+        choices: [
+          { id: "A", text: "趙匡胤" },
+          { id: "B", text: "朱元璋" },
+          { id: "C", text: "李世民" },
+          { id: "D", text: "忽必烈" }
+        ],
+        answer: ["A"],
+        explain: "宋朝由趙匡胤於公元960年陳橋兵變後建立（宋太祖）。"
+      },
+      {
+        id: "Q2",
+        type: "single",
+        text: "北宋滅亡的直接原因是？",
+        choices: [
+          { id: "A", text: "金兵南侵，靖康之變" },
+          { id: "B", text: "黃巾起義" },
+          { id: "C", text: "八國聯軍" },
+          { id: "D", text: "安史之亂" }
+        ],
+        answer: ["A"],
+        explain: "1127年靖康之變，金軍攻入開封，徽欽二帝被俘，北宋滅亡。"
+      },
+      {
+        id: "Q3",
+        type: "single",
+        text: "下列哪位是南宋著名的民族英雄？",
+        choices: [
+          { id: "A", text: "戚繼光" },
+          { id: "B", text: "岳飛" },
+          { id: "C", text: "關羽" },
+          { id: "D", text: "霍去病" }
+        ],
+        answer: ["B"],
+        explain: "岳飛以抗金聞名，精忠報國。"
+      },
+      {
+        id: "Q4",
+        type: "single",
+        text: "宋代在經濟上最突出的特徵是？",
+        choices: [
+          { id: "A", text: "游牧經濟發達" },
+          { id: "B", text: "農業退步" },
+          { id: "C", text: "商品經濟與城市發達" },
+          { id: "D", text: "閉關鎖國" }
+        ],
+        answer: ["C"],
+        explain: "宋代商業繁榮、市鎮眾多、紙幣（交子）使用，城市與手工業發達。"
+      },
+      {
+        id: "Q5",
+        type: "multi",
+        text: "下列哪些發明或技術在宋代有重要發展？（可複選）",
+        choices: [
+          { id: "A", text: "活字印刷" },
+          { id: "B", text: "指南針航海應用" },
+          { id: "C", text: "火藥軍事用途" },
+          { id: "D", text: "蒸汽機" }
+        ],
+        answer: ["A","B","C"],
+        explain: "活字印刷、指南針、火藥皆為宋代重要技術與應用；蒸汽機是工業革命的產物。"
+      }
     ];
 
-    function toCSV(data){
-      const esc = v => {
-        if (v == null) return "";
-        const s = String(v);
-        return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-      };
-      return data.map(r => r.map(esc).join(",")).join("\n");
-    }
+    // 渲染題目
+    const $quiz = document.getElementById('quiz');
+    function renderQuiz() {
+      $quiz.innerHTML = '';
+      QUESTIONS.forEach((q, idx) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'question';
+        wrap.dataset.qid = q.id;
 
-    document.getElementById('copyCsvBtn').addEventListener('click', async () => {
-      const csv = toCSV(fields);
-      try {
-        await navigator.clipboard.writeText(csv);
-        alert('CSV 已複製到剪貼簿。');
-      } catch (e) {
-        alert('複製失敗，請手動選取表格內容複製。');
-      }
-    });
+        const title = document.createElement('div');
+        title.className = 'q-title';
+        title.textContent = `${idx+1}. ${q.text} ${q.type === 'multi' ? '（可複選）' : ''}`;
+        wrap.appendChild(title);
 
-    document.getElementById('downloadCsvBtn').addEventListener('click', () => {
-      const csv = toCSV(fields);
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'Airtable-Fields.csv';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    });
+        q.choices.forEach(ch => {
+          const line = document.createElement('label');
+          line.className = 'choice';
 
-    function ui(id){ return document.getElementById(id); }
+          const input = document.createElement('input');
+          input.type = q.type === 'multi' ? 'checkbox' : 'radio';
+          input.name = q.id;
+          input.value = ch.id;
 
-    ui('fetchBtn').addEventListener('click', async () => {
-      const baseId = ui('baseId').value.trim();
-      const table  = ui('tableId').value.trim();
-      const view   = ui('viewId').value.trim();
-      const token  = ui('token').value.trim();
+          const text = document.createElement('div');
+          text.innerHTML = `<strong>${ch.id}.</strong> ${ch.text}`;
 
-      ui('status').textContent = '';
-      ui('result').textContent = '';
-
-      if (!baseId || !table) {
-        ui('status').innerHTML = '<span class="err">請填 Base ID 與 Table ID/表名。</span>';
-        return;
-      }
-      if (!token) {
-        ui('status').innerHTML = '<span class="err">未填 Token：僅示範可用。要實際讀資料，請填入 Personal Access Token 並確保已授權此 Base。</span>';
-        return;
-      }
-
-      try {
-        const url = new URL(`https://api.airtable.com/v0/${baseId}/${encodeURIComponent(table)}`);
-        if (view) url.searchParams.set('view', view);
-
-        ui('status').textContent = '請求中...';
-        const res = await fetch(url, {
-          headers: { Authorization: `Bearer ${token}` }
+          line.appendChild(input);
+          line.appendChild(text);
+          wrap.appendChild(line);
         });
 
-        const text = await res.text();
-        let json;
-        try {
-          json = JSON.parse(text);
-        } catch {
-          throw new Error('回應不是 JSON：' + text.slice(0, 200));
-        }
+        const explain = document.createElement('div');
+        explain.className = 'explain hidden';
+        explain.id = `exp_${q.id}`;
+        explain.textContent = `解析：${q.explain}`;
+        wrap.appendChild(explain);
 
-        if (!res.ok) {
-          ui('status').innerHTML = '<span class="err">發生錯誤（' + res.status + '）：' + (json.error?.message || json.error || 'Unknown') + '</span>';
-        } else {
-          ui('status').innerHTML = '<span class="ok">成功！以下為回應資料。</span>';
+        $quiz.appendChild(wrap);
+      });
+    }
+    renderQuiz();
+
+    function getAnswers() {
+      const ans = {};
+      QUESTIONS.forEach(q => {
+        const sel = [...document.querySelectorAll(`input[name="${q.id}"]`)];
+        const chosen = sel.filter(i => i.checked).map(i => i.value);
+        ans[q.id] = chosen;
+      });
+      return ans;
+    }
+
+    function grade(ans) {
+      let score = 0;
+      let total = QUESTIONS.length;
+      const details = [];
+
+      QUESTIONS.forEach(q => {
+        const correct = q.answer.slice().sort().join(',');
+        const chosen = (ans[q.id] || []).slice().sort().join(',');
+        const isCorrect = correct === chosen;
+        if (isCorrect) score += 1;
+        details.push({ id: q.id, correct: q.answer, chosen: ans[q.id] || [], isCorrect });
+      });
+
+      const percent = total === 0 ? 0 : Math.round((score / total) * 100);
+      return { score, total, percent, details };
+    }
+
+    function showExplanations(details) {
+      details.forEach(d => {
+        const el = document.getElementById(`exp_${d.id}`);
+        if (el) {
+          el.classList.remove('hidden');
+          el.style.color = d.isCorrect ? 'var(--ok)' : 'var(--err)';
         }
-        ui('result').textContent = JSON.stringify(json, null, 2);
-      } catch (err) {
-        ui('status').innerHTML = '<span class="err">例外錯誤：' + (err.message || err) + '</span>';
+      });
+    }
+
+    function nowISO() {
+      const d = new Date();
+      const tzOff = d.getTimezoneOffset();
+      const local = new Date(d.getTime() - tzOff*60000);
+      return local.toISOString().slice(0,19); // yyyy-MM-ddTHH:mm:ss
+    }
+
+    function buildRawHTML(ans, details) {
+      const lines = details.map(d => {
+        const ch = (ans[d.id]||[]).join(',');
+        const cor = d.correct.join(',');
+        const mark = d.isCorrect ? '✅' : '❌';
+        return `<div>${d.id}: [${ch}] vs 正確[${cor}] ${mark}</div>`;
+      }).join('');
+      return `<div>作答明細：${lines}</div>`;
+    }
+
+    // 提交到你的後端 /api/submit（伺服器會幫你寫入 Airtable）
+    async function uploadToServer(fieldsPayload) {
+      const url = document.getElementById('submitUrl').value.trim() || '/api/submit';
+      const headers = { 'Content-Type': 'application/json' };
+      // 若你在後端設定了 FORM_SECRET，可放開下行並填入同一密鑰
+      // headers['x-form-secret'] = 'YOUR_FORM_SECRET';
+
+      // 兩種 payload 皆支援：裸 fields 或 Airtable 格式
+      const res = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(fieldsPayload) // 伺服器端範例會自動包裝成 { records: [{ fields }] }
+      });
+
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch { throw new Error('後端回應不是 JSON：' + text.slice(0,200)); }
+
+      if (!res.ok) {
+        const msg = data?.error?.message || data?.error || '提交失敗';
+        throw new Error(msg);
+      }
+      return data;
+    }
+
+    function validateMeta() {
+      const studentName = document.getElementById('studentName').value.trim();
+      const studentNo   = document.getElementById('studentNo').value.trim();
+      const className   = document.getElementById('className').value.trim();
+
+      const miss = [];
+      if (!studentName) miss.push('姓名');
+      if (!studentNo)   miss.push('學號/座號');
+      if (!className)   miss.push('班級');
+
+      return { studentName, studentNo, className, miss };
+    }
+
+    function setStatus(msg, type='') {
+      const el = document.getElementById('status');
+      el.className = `note ${type}`;
+      el.textContent = msg;
+    }
+
+    function setResultText(score, total, percent) {
+      const el = document.getElementById('result');
+      el.innerHTML = `得分：<strong>${score}</strong> / ${total}（${percent}%）`;
+    }
+
+    document.getElementById('submitBtn').addEventListener('click', async () => {
+      const { studentName, studentNo, className, miss } = validateMeta();
+      if (miss.length) {
+        setStatus('請先填：' + miss.join('、'), 'warn');
+        return;
+      }
+
+      const answers = getAnswers();
+      const { score, total, percent, details } = grade(answers);
+      setResultText(score, total, percent);
+      showExplanations(details);
+
+      // 準備要送到後端的欄位（對應 Airtable 欄位）
+      const fields = {
+        className,
+        studentNo,
+        studentName,
+        score,
+        total,
+        percent,
+        submittedAt: nowISO(),
+        rawHTML: buildRawHTML(answers, details) // 若表中無此欄位可移除
+      };
+
+      try {
+        // 直接送 "fields" 給後端；後端會包裝成 Airtable 需要的 { records: [{ fields }] }
+        await uploadToServer(fields);
+        setStatus('成績已提交到後端並寫入 Airtable。', 'ok');
+      } catch (e) {
+        setStatus('提交失敗：' + e.message, 'err');
       }
     });
 
-    ui('clearBtn').addEventListener('click', () => {
-      ui('status').textContent = '';
-      ui('result').textContent = '';
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      document.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(i => i.checked = false);
+      document.querySelectorAll('.explain').forEach(el => el.classList.add('hidden'));
+      setStatus('');
+      document.getElementById('result').textContent = '';
     });
   </script>
 </body>
